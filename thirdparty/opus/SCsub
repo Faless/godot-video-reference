@@ -1,3 +1,4 @@
+#!python
 
 Import("env")
 
@@ -219,7 +220,7 @@ if env["builtin_opus"]:
     ]
     env_opus.Prepend(CPPPATH=[thirdparty_dir + "/" + dir for dir in thirdparty_include_paths])
 
-    if env["arch"] == "armv32":
+    if env["arch"] == "arm32":
         env_opus.Append(CPPDEFINES=["OPUS_ARM_OPT"])
     elif env["arch"] == "arm64":
         env_opus.Append(CPPDEFINES=["OPUS_ARM64_OPT"])
