@@ -223,43 +223,12 @@ env_libvpx = env_modules.Clone()
 # env_libvpx.disable_warnings()
 env_libvpx.Prepend(CPPPATH=[libvpx_dir])
 
-webm_multithread = env["platform"] != "javascript"
+webm_multithread = env["platform"] != "web"
 
-cpu_bits = "32" if "32" in env["arch"] else "64"
-webm_cpu_x86 = False
-webm_cpu_arm = False
-if env["platform"] == "uwp":
-    if "arm" in env["PROGSUFFIX"]:
-        webm_cpu_arm = True
-    else:
-        webm_cpu_x86 = True
-else:
-    import platform
-
-    is_x11_or_server_arm = env["platform"] == "linuxbsd" and (
-        platform.machine().startswith("arm") or platform.machine().startswith("aarch")
-    )
-    is_macos_x86 = env["platform"] == "macos" and ("arch" in env and (env["arch"] != "arm64"))
-    is_ios_x86 = env["platform"] == "ios" and ("arch" in env and env["arch"].startswith("x86"))
-    is_android_x86 = env["platform"] == "android" and env["arch"].startswith("x86")
-    webm_cpu_x86 = (
-        not is_x11_or_server_arm
-        and (cpu_bits == "32" or cpu_bits == "64")
-        and (
-            env["platform"] == "windows"
-            or env["platform"] == "linuxbsd"
-            or env["platform"] == "haiku"
-            or is_macos_x86
-            or is_android_x86
-            or is_ios_x86
-        )
-    )
-    webm_cpu_arm = (
-        is_x11_or_server_arm
-        or (not is_macos_x86 and env["platform"] == "macos")
-        or (not is_ios_x86 and env["platform"] == "ios")
-        or (not is_android_x86 and env["platform"] == "android")
-    )
+webm_cpu_x86 = "x86" in env["arch"]
+webm_cpu_arm = "arm" in env["arch"]
+webm_cpu_64 = "64" in env["arch"]
+webm_cpu_32 = "32" in env["arch"]
 
 if webm_cpu_x86:
     import subprocess
@@ -288,37 +257,36 @@ if webm_cpu_x86:
 
 webm_simd_optimizations = False
 
+# Assembler setup
 if webm_cpu_x86:
-    if env["platform"] == "windows" or env["platform"] == "uwp":
+    if env["platform"] == "windows":
         env_libvpx["ASFORMAT"] = "win"
     elif env["platform"] == "macos" or env["platform"] == "ios":
         env_libvpx["ASFORMAT"] = "macho"
     else:
         env_libvpx["ASFORMAT"] = "elf"
-    env_libvpx["ASFORMAT"] += cpu_bits
+
+    if webm_cpu_32:
+        env_libvpx["ASFORMAT"] += "32"
+        env_libvpx["ASCPU"] = "X86_32"
+    if webm_cpu_64:
+        env_libvpx["ASFORMAT"] += "64"
+        env_libvpx["ASCPU"] = "X86_64"
 
     env_libvpx["AS"] = "yasm"
     env_libvpx["ASFLAGS"] = "-I" + libvpx_dir[1:] + " -f $ASFORMAT -D $ASCPU"
     env_libvpx["ASCOM"] = "$AS $ASFLAGS -o $TARGET $SOURCES"
-
-    if cpu_bits == "32":
-        env_libvpx["ASCPU"] = "X86_32"
-    elif cpu_bits == "64":
-        env_libvpx["ASCPU"] = "X86_64"
 
     env_libvpx.Append(CPPDEFINES=["WEBM_X86ASM"])
 
     webm_simd_optimizations = True
 
 if webm_cpu_arm:
-    if env["platform"] == "ios":
-        env_libvpx["ASFLAGS"] = "-arch armv7"
-    elif env["platform"] == "android" and env["arch"] == "armv32" or env["platform"] == "linuxbsd":
-        env_libvpx["ASFLAGS"] = "-mfpu=neon"
-    elif env["platform"] == "uwp":
-        env_libvpx["AS"] = "armasm"
-        env_libvpx["ASFLAGS"] = ""
-        env_libvpx["ASCOM"] = "$AS $ASFLAGS -o $TARGET $SOURCES"
+    if webm_cpu_32:
+        if env["platform"] == "ios":
+            env_libvpx["ASFLAGS"] = "-arch armv7"
+        elif env["arch"] == "armv32":
+            env_libvpx["ASFLAGS"] = "-mfpu=neon"
 
     env_libvpx.Append(CPPDEFINES=["WEBM_ARMASM"])
 
@@ -327,23 +295,22 @@ if webm_cpu_arm:
 if webm_simd_optimizations == False:
     print("WebM SIMD optimizations are disabled. Check if your CPU architecture, CPU bits or platform are supported!")
 
+# Sources
 env_libvpx.add_source_files(env.modules_sources, libvpx_sources)
 
 if webm_multithread:
     env_libvpx.add_source_files(env.modules_sources, libvpx_sources_mt)
 
 if webm_cpu_x86:
-    is_clang_or_gcc = (
-        ("gcc" in os.path.basename(env["CC"])) or ("clang" in os.path.basename(env["CC"])) or ("macoscross" in env)
-    )
+    is_clang_or_gcc = not env.get("is_msvc", False)
 
     env_libvpx_mmx = env_libvpx.Clone()
-    if cpu_bits == "32" and is_clang_or_gcc:
+    if webm_cpu_32 and is_clang_or_gcc:
         env_libvpx_mmx.Append(CCFLAGS=["-mmmx"])
     env_libvpx_mmx.add_source_files(env.modules_sources, libvpx_sources_intrin_x86_mmx)
 
     env_libvpx_sse2 = env_libvpx.Clone()
-    if cpu_bits == "32" and is_clang_or_gcc:
+    if webm_cpu_32 and is_clang_or_gcc:
         env_libvpx_sse2.Append(CCFLAGS=["-msse2"])
     env_libvpx_sse2.add_source_files(env.modules_sources, libvpx_sources_intrin_x86_sse2)
 
@@ -360,8 +327,9 @@ if webm_cpu_x86:
     env_libvpx.add_source_files(env.modules_sources, libvpx_sources_intrin_x86)
 
     env_libvpx.add_source_files(env.modules_sources, libvpx_sources_x86asm)
-    if cpu_bits == "64":
+    if webm_cpu_64:
         env_libvpx.add_source_files(env.modules_sources, libvpx_sources_x86_64asm)
+
 elif webm_cpu_arm:
     env_libvpx.add_source_files(env.modules_sources, libvpx_sources_arm)
     if env["platform"] == "android":
@@ -371,12 +339,8 @@ elif webm_cpu_arm:
     env_libvpx_neon = env_libvpx.Clone()
     env_libvpx_neon.add_source_files(env.modules_sources, libvpx_sources_arm_neon)
 
-    if env["platform"] == "uwp":
-        env_libvpx.add_source_files(env.modules_sources, libvpx_sources_arm_neon_armasm_ms)
-    elif env["platform"] == "ios":
-        env_libvpx.add_source_files(env.modules_sources, libvpx_sources_arm_neon_gas_apple)
-    elif (is_x11_or_server_arm and cpu_bits == "32") or (
-        env["platform"] == "android" and not env["arch"] == "arm64"
-    ):
-        env_libvpx.add_source_files(env.modules_sources, libvpx_sources_arm_neon_gas)
- 
+    if webm_cpu_32:
+        if env["platform"] == "ios":
+            env_libvpx.add_source_files(env.modules_sources, libvpx_sources_arm_neon_gas_apple)
+        else:
+            env_libvpx.add_source_files(env.modules_sources, libvpx_sources_arm_neon_gas)
