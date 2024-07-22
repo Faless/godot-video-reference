@@ -225,7 +225,7 @@ env_libvpx.Prepend(CPPPATH=[libvpx_dir])
 
 webm_multithread = env["platform"] != "javascript"
 
-cpu_bits = env["bits"]
+cpu_bits = "32" if "32" in env["arch"] else "64"
 webm_cpu_x86 = False
 webm_cpu_arm = False
 if env["platform"] == "uwp":
@@ -239,11 +239,9 @@ else:
     is_x11_or_server_arm = env["platform"] == "linuxbsd" and (
         platform.machine().startswith("arm") or platform.machine().startswith("aarch")
     )
-    is_macos_x86 = env["platform"] == "osx" and ("arch" in env and (env["arch"] != "arm64"))
-    is_ios_x86 = env["platform"] == "iphone" and ("arch" in env and env["arch"].startswith("x86"))
-    is_android_x86 = env["platform"] == "android" and env["android_arch"].startswith("x86")
-    if is_android_x86:
-        cpu_bits = "32" if env["android_arch"] == "x86" else "64"
+    is_macos_x86 = env["platform"] == "macos" and ("arch" in env and (env["arch"] != "arm64"))
+    is_ios_x86 = env["platform"] == "ios" and ("arch" in env and env["arch"].startswith("x86"))
+    is_android_x86 = env["platform"] == "android" and env["arch"].startswith("x86")
     webm_cpu_x86 = (
         not is_x11_or_server_arm
         and (cpu_bits == "32" or cpu_bits == "64")
@@ -258,8 +256,8 @@ else:
     )
     webm_cpu_arm = (
         is_x11_or_server_arm
-        or (not is_macos_x86 and env["platform"] == "osx")
-        or (not is_ios_x86 and env["platform"] == "iphone")
+        or (not is_macos_x86 and env["platform"] == "macos")
+        or (not is_ios_x86 and env["platform"] == "ios")
         or (not is_android_x86 and env["platform"] == "android")
     )
 
@@ -293,7 +291,7 @@ webm_simd_optimizations = False
 if webm_cpu_x86:
     if env["platform"] == "windows" or env["platform"] == "uwp":
         env_libvpx["ASFORMAT"] = "win"
-    elif env["platform"] == "osx" or env["platform"] == "iphone":
+    elif env["platform"] == "macos" or env["platform"] == "ios":
         env_libvpx["ASFORMAT"] = "macho"
     else:
         env_libvpx["ASFORMAT"] = "elf"
@@ -313,9 +311,9 @@ if webm_cpu_x86:
     webm_simd_optimizations = True
 
 if webm_cpu_arm:
-    if env["platform"] == "iphone":
+    if env["platform"] == "ios":
         env_libvpx["ASFLAGS"] = "-arch armv7"
-    elif env["platform"] == "android" and env["android_arch"] == "armv7" or env["platform"] == "linuxbsd":
+    elif env["platform"] == "android" and env["arch"] == "armv32" or env["platform"] == "linuxbsd":
         env_libvpx["ASFLAGS"] = "-mfpu=neon"
     elif env["platform"] == "uwp":
         env_libvpx["AS"] = "armasm"
@@ -336,7 +334,7 @@ if webm_multithread:
 
 if webm_cpu_x86:
     is_clang_or_gcc = (
-        ("gcc" in os.path.basename(env["CC"])) or ("clang" in os.path.basename(env["CC"])) or ("osxcross" in env)
+        ("gcc" in os.path.basename(env["CC"])) or ("clang" in os.path.basename(env["CC"])) or ("macoscross" in env)
     )
 
     env_libvpx_mmx = env_libvpx.Clone()
@@ -375,10 +373,10 @@ elif webm_cpu_arm:
 
     if env["platform"] == "uwp":
         env_libvpx.add_source_files(env.modules_sources, libvpx_sources_arm_neon_armasm_ms)
-    elif env["platform"] == "iphone":
+    elif env["platform"] == "ios":
         env_libvpx.add_source_files(env.modules_sources, libvpx_sources_arm_neon_gas_apple)
     elif (is_x11_or_server_arm and cpu_bits == "32") or (
-        env["platform"] == "android" and not env["android_arch"] == "arm64v8"
+        env["platform"] == "android" and not env["arch"] == "arm64"
     ):
         env_libvpx.add_source_files(env.modules_sources, libvpx_sources_arm_neon_gas)
  

@@ -1,8 +1,11 @@
 [configuration]
 
 entry_symbol = "godot_video_reference_library_init"
+compatibility_minimum = 4.2
 
 [libraries]
 
-linux.64 = "bin/x11/libgdvideo.so"
-windows.64 = "bin/win64/libgdvideo.dll"
+linux.debug.64 = "bin/libgdvideo.linux.template_debug.x86_64.so"
+linux.release.64 = "bin/libgdvideo.linux.template_release.x86_64.so"
+windows.debug.64 = "bin/libgdvideo.windows.template_debug.x86_64.dll"
+windows.release.64 = "bin/libgdvideo.windows.template_release.x86_64.dll"
