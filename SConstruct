@@ -70,13 +70,21 @@ includes = glob_filenames("src/*.h")
 env.sources += sources
 env.includes = includes
 
-def add_source_files(self, arr, regex):
+def add_source_files(self, sources, regex):
+    files = []
     if type(regex) == list:
-        arr += regex
-        # print(arr)
+        files += regex
     elif type(regex) == str:
-        arr += glob_filenames(regex)
-        # print(arr)
+        files += glob_filenames(regex)
+
+    # Add each path as compiled Object following environment (self) configuration
+    for path in files:
+        obj = self.SharedObject(path)
+        if obj in sources:
+            print('WARNING: Shared Object "{}" already included in environment sources.'.format(obj))
+            continue
+        sources.append(obj)
+
 
 env.__class__.add_source_files = add_source_files 
 

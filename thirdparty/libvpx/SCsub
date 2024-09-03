@@ -302,6 +302,7 @@ if webm_multithread:
     env_libvpx.add_source_files(env.modules_sources, libvpx_sources_mt)
 
 if webm_cpu_x86:
+    import sys
     is_clang_or_gcc = not env.get("is_msvc", False)
 
     env_libvpx_mmx = env_libvpx.Clone()
