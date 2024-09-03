@@ -137,7 +137,8 @@ jobs:
       - name: Configuring Python packages
         run: |
           python -c "import sys; print(sys.version)"
-          python -m pip install scons
+          # 4.8.0 causes a BoolVariable error. See godot-cpp GH-1518 and GH-1526
+          python -m pip install scons=4.7.0
 
       - name: Setup Linux toolchains
         if: ${{ matrix.platform == 'linux' }}
