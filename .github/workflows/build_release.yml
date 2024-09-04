@@ -49,12 +49,12 @@ jobs:
             sconsflags: ''
             os: 'ubuntu-20.04'
             cache-name: linux-x86_64
-          - platform: linux
-            arch: 'arm32'
-            buildroot: 'arm-godot-linux-gnueabihf_sdk-buildroot'
-            sconsflags: ''
-            os: 'ubuntu-20.04'
-            cache-name: linux-arm32
+#          - platform: linux
+#            arch: 'arm32'
+#            buildroot: 'arm-godot-linux-gnueabihf_sdk-buildroot'
+#            sconsflags: ''
+#            os: 'ubuntu-20.04'
+#            cache-name: linux-arm32
           - platform: linux
             arch: 'arm64'
             buildroot: 'aarch64-godot-linux-gnu_sdk-buildroot'
