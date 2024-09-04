@@ -102,7 +102,7 @@ jobs:
           cache-name: ${{ matrix.cache-name }}
         continue-on-error: true
 
-      - name: Install Windows build dependencies
+      - name: Windows build dependencies
         if: ${{ matrix.platform == 'windows' }}
         run: |
           sudo apt-get update
@@ -114,11 +114,18 @@ jobs:
           dpkg -l | grep ii | grep mingw
           update-alternatives --get-selections | grep mingw
 
-      - name: Install Linux build dependencies
+      - name: Linux build dependencies
         if: ${{ matrix.platform == 'linux' }}
         run: |
           sudo apt-get update
           sudo apt-get install build-essential gcc-multilib g++-multilib wget
+
+      - name: Android dependencies
+        if: ${{ matrix.platform == 'android' }}
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r23c
+          link-to-sdk: true
 
       - name: Setup Linux buildroot toolchain cache
         if: ${{ matrix.platform == 'linux' }}
